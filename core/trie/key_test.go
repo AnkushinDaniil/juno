@@ -194,3 +194,35 @@ func FuzzKeyTest(f *testing.F) {
 		}
 	})
 }
+
+func FuzzDeleteLSB(f *testing.F) {
+	f.Fuzz(func(t *testing.T, num int64, n uint8) {
+		if num < 0 {
+			num *= -1
+		}
+
+		bi := big.NewInt(num)
+		b := bi.Bytes()
+		keyLen := uint8(bi.BitLen())
+		if keyLen == 0 {
+			n = 0
+		} else {
+			n %= keyLen
+		}
+		key := trie.NewKey(keyLen, b)
+		bitsStr := strconv.FormatInt(num, 2)
+
+		key.DeleteLSB(n)
+		bitsStr = bitsStr[:len(bitsStr)-int(n)]
+
+		newNum, _ := strconv.ParseInt(bitsStr, 2, 64)
+		bi = big.NewInt(newNum)
+		b = bi.Bytes()
+		newKeyLen := uint8(bi.BitLen())
+		newKey := trie.NewKey(newKeyLen, b)
+
+		for i := uint8(0); i < keyLen; i++ {
+			assert.Equal(t, newKey, key, i)
+		}
+	})
+}
