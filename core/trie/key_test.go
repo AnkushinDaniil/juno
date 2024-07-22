@@ -3,6 +3,7 @@ package trie_test
 import (
 	"bytes"
 	"math/big"
+	"strconv"
 	"testing"
 
 	"github.com/NethermindEth/juno/core/felt"
@@ -156,8 +157,8 @@ func TestTruncate(t *testing.T) {
 }
 
 func FuzzKeyEncoding(f *testing.F) {
-	f.Fuzz(func(t *testing.T, num uint) {
-		bi := big.NewInt(int64(num))
+	f.Fuzz(func(t *testing.T, num int64) {
+		bi := big.NewInt(num)
 		b := bi.Bytes()
 		keyLen := uint8(bi.BitLen())
 		key := trie.NewKey(keyLen, b)
@@ -175,5 +176,21 @@ func FuzzKeyEncoding(f *testing.F) {
 		var decodedKey trie.Key
 		require.NoError(t, decodedKey.UnmarshalBinary(keyBytes))
 		assert.Equal(t, key, decodedKey)
+	})
+}
+
+func FuzzKeyTest(f *testing.F) {
+	f.Fuzz(func(t *testing.T, num int64) {
+		if num < 0 {
+			num *= -1
+		}
+		bi := big.NewInt(num)
+		b := bi.Bytes()
+		keyLen := uint8(bi.BitLen())
+		key := trie.NewKey(keyLen, b)
+		bitsStr := strconv.FormatInt(num, 2)
+		for i := uint8(0); i < keyLen; i++ {
+			assert.Equal(t, bitsStr[keyLen-i-1] == '1', key.Test(uint8(i)), i)
+		}
 	})
 }
