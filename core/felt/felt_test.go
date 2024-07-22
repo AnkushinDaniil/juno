@@ -70,9 +70,10 @@ func TestShortString(t *testing.T) {
 
 // TODO: check input data length and update
 func FuzzUnmarshalJson(f *testing.F) {
-	digits := "abcdefABCDEF0123456789"
+	digits := "abcdefABCDEF0123456789" //nolint: goconst
 	var ft felt.Felt
 	f.Fuzz(func(t *testing.T, bytes []byte) {
+		//nolint: gocritic
 		// bytes = bytes[:len(bytes)%62]
 		bytes = bytes[:len(bytes)%(fp.Bits*3-1)] // Why Bits*3?
 		bytes = append(bytes, digits[rand.Intn(len(digits))])
@@ -119,7 +120,7 @@ func FuzzFeltCbor(f *testing.F) {
 			bytes[i] = digits[int(bytes[i])%len(digits)]
 		}
 		str := string(bytes)
-		ft.SetString(str)
+		ft.SetString(str) //nolint:errcheck
 
 		encoder.TestSymmetry(t, ft)
 	})

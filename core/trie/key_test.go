@@ -190,7 +190,7 @@ func FuzzKeyTest(f *testing.F) {
 		key := trie.NewKey(keyLen, b)
 		bitsStr := strconv.FormatInt(num, 2)
 		for i := uint8(0); i < keyLen; i++ {
-			assert.Equal(t, bitsStr[keyLen-i-1] == '1', key.Test(uint8(i)), i)
+			assert.Equal(t, bitsStr[keyLen-i-1] == '1', key.Test(i), i)
 		}
 	})
 }
