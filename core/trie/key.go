@@ -134,6 +134,10 @@ func (k *Key) Truncate(length uint8) {
 	if unusedBitsCount != 8 && len(inUseBytes) > 0 {
 		inUseBytes[0] = (inUseBytes[0] << unusedBitsCount) >> unusedBitsCount
 	}
+	// possible fix of FuzzTruncate
+	// for mask := uint8(1) << max(0, (k.len-1)); mask > 0 && inUseBytes[0]&mask == 0; mask >>= 1 {
+	// 	k.len--
+	// }
 }
 
 func (k *Key) RemoveLastBit() {
