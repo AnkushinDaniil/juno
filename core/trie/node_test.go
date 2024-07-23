@@ -26,3 +26,25 @@ func TestNodeHash(t *testing.T) {
 
 	assert.Equal(t, expected, node.Hash(&path, crypto.Pedersen), "TestTrieNode_Hash failed")
 }
+
+func FuzzHash(f *testing.F) {
+	f.Fuzz(func(t *testing.T, valueBytes, keyBytes []byte) {
+		keyBytes = keyBytes[:len(keyBytes)%32]
+		const ALPHABET = "0123456789abcdefABCDEF"
+		for i := range keyBytes {
+			keyBytes[i] = ALPHABET[int(keyBytes[i])%len(ALPHABET)]
+		}
+		for i := range valueBytes {
+			valueBytes[i] = ALPHABET[int(valueBytes[i])%len(ALPHABET)]
+		}
+
+		n := &trie.Node{Value: new(felt.Felt).SetBytes(valueBytes)}
+
+		ft := new(felt.Felt)
+		ft.SetBytes(keyBytes)
+		bitLen := ft.Impl().BitLen()
+		path := trie.NewKey(uint8(bitLen), keyBytes)
+
+		n.Hash(&path, crypto.Pedersen)
+	})
+}
