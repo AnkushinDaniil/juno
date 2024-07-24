@@ -869,3 +869,40 @@ func TestVerifyRangeProof(t *testing.T) {
 		require.True(t, verif)
 	})
 }
+
+func FuzzGetProofAndVerify(f *testing.F) {
+	f.Fuzz(func(t *testing.T, k1, k2, v1, v2, leaf uint64) {
+		memdb := pebble.NewMemTest(t)
+		txn, err := memdb.NewTransaction(true)
+		require.NoError(t, err)
+
+		tempTrie, err := trie.NewTriePedersen(trie.NewStorage(txn, []byte{0}), 251)
+		require.NoError(t, err)
+
+		key1 := new(felt.Felt).SetUint64(k1)
+		key2 := new(felt.Felt).SetUint64(k2)
+		value1 := new(felt.Felt).SetUint64(v1)
+		value2 := new(felt.Felt).SetUint64(v2)
+
+		_, err = tempTrie.Put(key1, value1)
+		require.NoError(t, err)
+
+		_, err = tempTrie.Put(key2, value2)
+		require.NoError(t, err)
+
+		require.NoError(t, tempTrie.Commit())
+
+		leafFelt := new(felt.Felt).SetUint64(leaf).Bytes()
+		leafKey := trie.NewKey(251, leafFelt[:])
+		proofNodes, err := trie.GetProof(&leafKey, tempTrie)
+		require.NoError(t, err)
+
+		root, err := tempTrie.Root()
+		require.NoError(t, err)
+		val1 := new(felt.Felt).SetUint64(2)
+
+		zeroFeltBytes := new(felt.Felt).SetUint64(0).Bytes()
+		leafkey := trie.NewKey(251, zeroFeltBytes[:])
+		trie.VerifyProof(root, &leafkey, val1, proofNodes, crypto.Pedersen)
+	})
+}
