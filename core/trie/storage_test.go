@@ -2,6 +2,7 @@ package trie_test
 
 import (
 	"errors"
+	"math/big"
 	"testing"
 
 	"github.com/NethermindEth/juno/core/felt"
@@ -104,5 +105,52 @@ func TestStorage(t *testing.T) {
 			require.ErrorIs(t, err, db.ErrKeyNotFound)
 			return nil
 		}))
+	})
+}
+
+func FuzzStorage(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data, prefix []byte, num int64) {
+		testDB := pebble.NewMemTest(t)
+		bi := big.NewInt(num)
+		b := bi.Bytes()
+		keyLen := uint8(bi.BitLen())
+		key := trie.NewKey(keyLen, b)
+
+		value := new(felt.Felt).SetBytes(data)
+
+		node := &trie.Node{
+			Value: value,
+		}
+
+		var err error
+
+		require.EqualError(t, testDB.View(func(txn db.Transaction) error {
+			tTxn := trie.NewStorage(txn, prefix)
+			_, err = tTxn.Get(&key)
+			return err
+		}), db.ErrKeyNotFound.Error(), err)
+
+		require.NoError(t, testDB.Update(func(txn db.Transaction) error {
+			tTxn := trie.NewStorage(txn, prefix)
+			err = tTxn.Put(&key, node)
+			return err
+		}), "put a node", err)
+
+		require.NoError(t, testDB.View(func(txn db.Transaction) error {
+			tTxn := trie.NewStorage(txn, prefix)
+			var got *trie.Node
+			got, err := tTxn.Get(&key)
+			require.NoError(t, err)
+			assert.Equal(t, node, got)
+			return err
+		}), "get a node", err)
+
+		if keyLen != 0 {
+			require.NoError(t, testDB.Update(func(txn db.Transaction) error {
+				tTxn := trie.NewStorage(txn, prefix)
+				err = tTxn.Delete(&key)
+				return err
+			}), "delete a node", err)
+		}
 	})
 }
