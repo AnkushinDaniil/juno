@@ -375,3 +375,55 @@ func BenchmarkTriePut(b *testing.B) {
 		return t.Commit()
 	}))
 }
+
+// FuzzTrie runs a fuzzer on a Trie.
+//
+// The Trie is created with a random key and value, the value is then replaced
+// with a new value, and then put with a zero value. It then checks that the
+// value in the Trie matches the expected value.
+//
+// The function uses the testing.Fuzz function from the testing package.
+// It generates random key and value bytes, and a new value byte slice.
+// It then creates a new Trie, puts the key/value pair into the Trie,
+// retrieves the value, puts a new value, retrieves the value again,
+// and puts a zero value. It then checks that the value in the Trie
+// matches the expected value.
+func FuzzTrie(f *testing.F) {
+	// A zero valued felt.Felt.
+	zeroVal := new(felt.Felt).SetUint64(0)
+	// Run the fuzzer.
+	f.Fuzz(func(t *testing.T, keyBytes, valueBytes, newValueBytes []byte) {
+		// Create a new Trie.
+		require.NoError(t, trie.RunOnTempTrie(251, func(tempTrie *trie.Trie) error {
+			key := new(felt.Felt).SetBytes(keyBytes)
+			value := new(felt.Felt).SetBytes(valueBytes)
+			newValue := new(felt.Felt).SetBytes(newValueBytes)
+
+			// Put the key/value pair into the Trie.
+			_, err := tempTrie.Put(key, value)
+			require.NoError(t, err, "Put: Put failed")
+
+			// Get the value from the Trie.
+			sameValue, err := tempTrie.Get(key)
+			require.NoError(t, err, "Get: Get failed")
+			assert.Equal(t, value, sameValue, "Get: Value not equal")
+
+			// Update the value in the Trie.
+			_, err = tempTrie.Put(key, newValue)
+			require.NoError(t, err, "Update: Put failed")
+
+			// Check that the value in the Trie matches the new value.
+			sameValue, err = tempTrie.Get(key)
+			require.NoError(t, err, "Update: Get failed")
+			assert.Equal(t, newValue, sameValue, "Update: Value not equal")
+
+			// Delete value from the Trie.
+			_, err = tempTrie.Put(key, zeroVal)
+			require.NoError(t, err, "Delete: put failed")
+			sameValue, err = tempTrie.Get(key)
+			require.NoError(t, err, "Delete: Get failed")
+			assert.Equal(t, &felt.Zero, sameValue, "Delete: Value not equal")
+			return nil
+		}))
+	})
+}
